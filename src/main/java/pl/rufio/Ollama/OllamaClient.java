@@ -5,30 +5,31 @@ import io.github.ollama4j.exceptions.OllamaException;
 import io.github.ollama4j.models.chat.*;
 import io.github.ollama4j.models.generate.OllamaGenerateTokenHandler;
 import io.github.ollama4j.models.request.ThinkMode;
+import pl.rufio.chat.ChatQueue;
 
-import java.io.IOException;
 import java.util.List;
-import java.util.concurrent.BlockingQueue;
 
 public class OllamaClient {
-    OllamaConfig config = new OllamaConfig("config.properties");
+    OllamaConfig config;
     private List<OllamaChatMessage> chatHistory;
-    private BlockingQueue<String> queue;
-    private final Ollama ollama = new Ollama(config.getHost());
+    ChatQueue chatQueue;
+    private final Ollama ollama;
 
-    public OllamaClient(List<OllamaChatMessage> chatHistory, BlockingQueue<String> queue) throws IOException {
+    public OllamaClient(
+            List<OllamaChatMessage> chatHistory,
+            OllamaConfig config,
+            ChatQueue chatQueue
+    ){
         this.chatHistory = chatHistory;
-        this.queue = queue;
+        this.config = config;
+        this.chatQueue = chatQueue;
+        this.ollama = new Ollama(config.getHost());
     }
 
     public void ChatWithOllama(String message) {
-        try {
-            sendMessage(message);
-        }catch(OllamaException oe){
-            System.err.println("Coś się zrąbało w OllamaClient. Napraw to");
-        }
+        sendMessage(message);
     }
-    private void sendMessage(String prompt) throws OllamaException {
+    private void sendMessage(String prompt){
         String model = config.getModel();
         ollama.setRequestTimeoutSeconds(config.getTimeout());
         OllamaChatRequest chatRequest;
@@ -50,8 +51,12 @@ public class OllamaClient {
         }else{
             chatRequest.setThink(ThinkMode.DISABLED);
         }
-        OllamaChatResult chatResult = ollama.chat(chatRequest, streamObservering());
-        chatHistory = chatResult.getChatHistory();
+        try{
+            OllamaChatResult chatResult = ollama.chat(chatRequest, streamObservering());
+            chatHistory = chatResult.getChatHistory();
+        }catch(OllamaException oe){
+            oe.printStackTrace();
+        }
         System.out.println();
     }
     private OllamaChatStreamObserver streamObservering() {
@@ -62,7 +67,7 @@ public class OllamaClient {
 
                     @Override
                     public void accept(String message) {
-                        queue.offer(message);
+                        chatQueue.put(message);
                     }
                 });
         return streamObserver;

@@ -15,7 +15,7 @@ public class OllamaConfig {
     private final double topP;
     private final boolean think;
 
-    public OllamaConfig(String filePath) throws IOException {
+    public OllamaConfig(String filePath){
         Properties properties = new Properties();
 
         try (InputStream input = getClass()
@@ -27,6 +27,8 @@ public class OllamaConfig {
             }
 
             properties.load(input);
+        }catch (IOException e) {
+            e.printStackTrace();
         }
 
         host = properties.getProperty("ollama.host");

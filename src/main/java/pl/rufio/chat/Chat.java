@@ -3,21 +3,21 @@ package pl.rufio.chat;
 import io.github.ollama4j.models.chat.*;
 import pl.rufio.Ollama.OllamaClient;
 
-import java.io.IOException;
-import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
 
 public class Chat {
-    PrintWriter out = new PrintWriter(System.out, true);
-    private final BlockingQueue<String> queue = new LinkedBlockingQueue<>();
     private List<OllamaChatMessage> chatHistory = new ArrayList<OllamaChatMessage>();
+    ChatQueue chatQueue;
     private Thread printerThread;
-    OllamaClient client = new OllamaClient(chatHistory, queue);
+    OllamaClient client;
 
-    public Chat() throws IOException {
+    public Chat(
+            OllamaClient client,
+            ChatQueue chatQueue
+    ){
+        this.client = client;
+        this.chatQueue = chatQueue;
         startPrinter();
     }
 
@@ -34,10 +34,10 @@ public class Chat {
         printerThread = new Thread(() -> {
             try {
                 while (!Thread.currentThread().isInterrupted()) {
-                    String message = queue.take();
+                    String message = chatQueue.get();
                     for (char c : message.toCharArray()) {
-                        out.print(c);
-                        out.flush();
+                        System.out.print(c);
+                        System.out.flush();
                         Thread.sleep(10);
                     }
                 }

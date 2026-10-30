@@ -1,8 +1,9 @@
-package pl.rufio.Tools;
+package pl.rufio.Tools.packageWithTools;
 
 
+import pl.rufio.Tools.Tool;
 
-public class SystemInfoTool implements Tool {
+public class GetOsName implements Tool {
     @Override
     public String getName() {
         return "system_info";

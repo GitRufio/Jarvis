@@ -1,13 +1,8 @@
 package pl.rufio.chat;
 
-import io.github.ollama4j.models.chat.*;
 import pl.rufio.Ollama.OllamaClient;
 
-import java.util.ArrayList;
-import java.util.List;
-
 public class Chat {
-    private List<OllamaChatMessage> chatHistory = new ArrayList<OllamaChatMessage>();
     ChatQueue chatQueue;
     private Thread printerThread;
     OllamaClient client;
@@ -26,7 +21,7 @@ public class Chat {
             System.err.println("Ollama jest niedostępna!");
             return;
         }
-        client.ChatWithOllama(prompt);
+        client.chatWithOllama(prompt);
 
     }
 
@@ -47,8 +42,5 @@ public class Chat {
         });
         printerThread.setDaemon(true);
         printerThread.start();
-    }
-    public List<OllamaChatMessage> getChatHistory() {
-        return chatHistory;
     }
 }

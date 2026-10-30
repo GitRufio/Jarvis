@@ -1,16 +1,16 @@
 package pl.rufio.Tools;
 
 
-import java.util.Collection;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 public class ToolRegistry {
 
     private final Map<String, Tool> tools = new LinkedHashMap<>();
 
     public void register(Tool tool) {
+        if(tools.containsKey(tool.getName())) {
+            throw new IllegalArgumentException("Tool already registered: " + tool.getName());
+        }
         tools.put(tool.getName(), tool);
     }
     public Optional<Tool> get(String name) {
@@ -18,6 +18,6 @@ public class ToolRegistry {
     }
 
     public Collection<Tool> getAll(){
-        return tools.values();
+        return Collections.unmodifiableCollection(tools.values());
     }
 }

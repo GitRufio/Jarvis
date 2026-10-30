@@ -5,55 +5,59 @@ import io.github.ollama4j.exceptions.OllamaException;
 import io.github.ollama4j.models.chat.*;
 import io.github.ollama4j.models.generate.OllamaGenerateTokenHandler;
 import io.github.ollama4j.models.request.ThinkMode;
+import io.github.ollama4j.tools.Tools;
 import pl.rufio.chat.ChatQueue;
+import pl.rufio.memory.MemoryService;
 
 import java.util.List;
 
 public class OllamaClient {
-    OllamaConfig config;
-    private List<OllamaChatMessage> chatHistory;
-    ChatQueue chatQueue;
+    private final OllamaConfig config;
+    private final MemoryService memoryService;
+    private final ChatQueue chatQueue;
     private final Ollama ollama;
+    private final List<Tools.Tool> ollamaTools;
 
     public OllamaClient(
-            List<OllamaChatMessage> chatHistory,
             OllamaConfig config,
-            ChatQueue chatQueue
+            ChatQueue chatQueue,
+            MemoryService memoryService,
+            List<Tools.Tool> ollamaTools
     ){
-        this.chatHistory = chatHistory;
         this.config = config;
         this.chatQueue = chatQueue;
+        this.memoryService = memoryService;
+        this.ollamaTools = ollamaTools;
         this.ollama = new Ollama(config.getHost());
     }
 
-    public void ChatWithOllama(String message) {
+    public void chatWithOllama(String message) {
         sendMessage(message);
     }
     private void sendMessage(String prompt){
         String model = config.getModel();
         ollama.setRequestTimeoutSeconds(config.getTimeout());
         OllamaChatRequest chatRequest;
-        if(chatHistory.isEmpty()){
+        if(memoryService.getChatHistory().isEmpty()){
             chatRequest = OllamaChatRequest.builder()
                     .withModel(model)
-                    .withMessages(chatHistory)
-                    .withMessage(OllamaChatMessageRole.USER,"Jesteś agentem Jarvis, zaprojektowanym do pomocy użytkownikowi." +
-                            " A oto piersze pytanie użytkownika: " +  prompt).build();
+                    .withMessage(OllamaChatMessageRole.SYSTEM,"Jesteś agentem Jarvis, zaprojektowanym do pomocy użytkownikowi.")
+                    .withMessage(OllamaChatMessageRole.USER, prompt).withTools(ollamaTools).withUseTools(false).build();
         } else{
             chatRequest = OllamaChatRequest.builder()
                     .withModel(model)
-                    .withMessages(chatHistory)
-                    .withMessage(OllamaChatMessageRole.USER, prompt).build();
+                    .withMessages(memoryService.getChatHistory())
+                    .withMessage(OllamaChatMessageRole.USER, prompt).withTools(ollamaTools).withUseTools(false).build();
         }
 
-        if(config.isThink() == true){
+        if(config.isThink()){
             chatRequest.setThink(ThinkMode.ENABLED);
         }else{
             chatRequest.setThink(ThinkMode.DISABLED);
         }
         try{
             OllamaChatResult chatResult = ollama.chat(chatRequest, streamObservering());
-            chatHistory = chatResult.getChatHistory();
+            memoryService.changeList(chatResult.getChatHistory());
         }catch(OllamaException oe){
             oe.printStackTrace();
         }

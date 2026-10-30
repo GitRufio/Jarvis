@@ -1,7 +1,13 @@
-package pl.rufio.chat;
+package pl.rufio.Tools;
 
 public interface Tool {
-    String name;
-    
+    String getName();
+
+    String getDescription();
+
+    String getParametersSchema();
+
+    String execute(String arguments) throws Exception;
+
 
 }

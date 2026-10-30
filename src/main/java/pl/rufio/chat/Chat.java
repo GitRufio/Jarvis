@@ -1,59 +1,54 @@
 package pl.rufio.chat;
 
+import io.github.ollama4j.models.chat.*;
+import pl.rufio.Ollama.OllamaClient;
 
-import io.github.ollama4j.Ollama;
-import io.github.ollama4j.exceptions.OllamaException;
-import io.github.ollama4j.models.chat.OllamaChatMessageRole;
-import io.github.ollama4j.models.chat.OllamaChatRequest;
-import io.github.ollama4j.models.chat.OllamaChatResult;
-import io.github.ollama4j.models.chat.OllamaChatStreamObserver;
-import io.github.ollama4j.models.generate.OllamaGenerateTokenHandler;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 public class Chat {
-    Ollama ollama = new Ollama();
-    public void prompt(String prompt) throws OllamaException {
-        ollama.setRequestTimeoutSeconds(180);
-        if (!checkForAvailability()) {
+    PrintWriter out = new PrintWriter(System.out, true);
+    private final BlockingQueue<String> queue = new LinkedBlockingQueue<>();
+    private List<OllamaChatMessage> chatHistory = new ArrayList<OllamaChatMessage>();
+    private Thread printerThread;
+    OllamaClient client = new OllamaClient(chatHistory, queue);
+
+    public Chat() throws IOException {
+        startPrinter();
+    }
+
+    public void prompt(String prompt) {
+        if (!client.checkForAvailability()) {
             System.err.println("Ollama jest niedostępna!");
+            return;
         }
-        sendMessage(prompt);
+        client.ChatWithOllama(prompt);
+
     }
-    private boolean checkForAvailability(){
-        try {
-            return ollama.ping();
-        }  catch (OllamaException e) {
-            System.err.println("Wystąpił błąd!!!");
-            System.err.println(e.getMessage());
-            return false;
-        }
+
+    private void startPrinter() {
+        printerThread = new Thread(() -> {
+            try {
+                while (!Thread.currentThread().isInterrupted()) {
+                    String message = queue.take();
+                    for (char c : message.toCharArray()) {
+                        out.print(c);
+                        out.flush();
+                        Thread.sleep(10);
+                    }
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        });
+        printerThread.setDaemon(true);
+        printerThread.start();
     }
-    private void sendMessage(String prompt) throws OllamaException {
-        String model = "qwen3:8b";
-        //ollama.pullModel(model);
-
-        OllamaChatRequest builder = OllamaChatRequest.builder().withModel(model);
-
-        OllamaChatRequest chatRequest = builder.withMessage(OllamaChatMessageRole.USER, prompt).build();
-
-        OllamaChatStreamObserver streamObserver = new OllamaChatStreamObserver();
-
-        /*streamObserver.setThinkingStreamHandler(
-                new OllamaGenerateTokenHandler() {
-                    @Override
-                    public void accept(String message) {
-                        System.out.print(message.toUpperCase());
-                    }
-                });*/
-        // Response tokens to be printed in lowercase
-        streamObserver.setResponseStreamHandler(
-                new OllamaGenerateTokenHandler() {
-                    @Override
-                    public void accept(String message) {
-                        System.out.print(message);
-                    }
-                });
-
-        ollama.chat(chatRequest, streamObserver);
-        System.out.println("");
+    public List<OllamaChatMessage> getChatHistory() {
+        return chatHistory;
     }
 }
